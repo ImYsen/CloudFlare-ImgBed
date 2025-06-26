@@ -1,0 +1,37 @@
+name: 🔁 合并同步上游仓库（安全模式）
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # 每天北京时间 11 点执行
+  workflow_dispatch:       # 支持手动触发
+
+jobs:
+  merge-upstream:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史，才能合并
+
+      - name: 🧾 设置 Git 信息
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: 🌐 添加上游仓库并拉取
+        run: |
+          git remote add upstream https://github.com/MarSeventh/CloudFlare-ImgBed.git
+          git fetch upstream
+
+      - name: 🔄 合并上游更改
+        run: |
+          git checkout main
+          git merge upstream/main --no-edit || exit 1
+
+      - name: 🚀 推送到你的仓库
+        uses: ad-m/github-push-action@v0.8.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
