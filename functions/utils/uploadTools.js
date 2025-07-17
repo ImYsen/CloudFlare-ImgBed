@@ -177,7 +177,8 @@ export async function purgeCDNCache(env, cdnUrl, url, normalizedFolder) {
 
 // 从 request 中解析 ip 地址
 export function getUploadIp(request) {
-    const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-real-ip") || request.headers.get("x-forwarded-for") || request.headers.get("x-client-ip") || request.headers.get("x-host") || request.headers.get("x-originating-ip") || request.headers.get("x-cluster-client-ip") || request.headers.get("forwarded-for") || request.headers.get("forwarded") || request.headers.get("via") || request.headers.get("requester") || request.headers.get("true-client-ip") || request.headers.get("client-ip") || request.headers.get("x-remote-ip") || request.headers.get("x-originating-ip") || request.headers.get("fastly-client-ip") || request.headers.get("akamai-origin-hop") || request.headers.get("x-remote-ip") || request.headers.get("x-remote-addr") || request.headers.get("x-remote-host") || request.headers.get("x-client-ip") || request.headers.get("x-client-ips") || request.headers.get("x-client-ip")
+    const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-real-ip") || request.headers.get("x-forwarded-for") || request.headers.get("x-client-ip") || request.headers.get("x-host") || request.headers.get("x-originating-ip") || request.headers.get("x-cluster-client-ip") || request.headers.get("forwarded-for") || request.headers.get("forwarded") || request.headers.get("via") || request.headers.get("requester") || request.headers.get("true-client-ip") || request.headers.get("client-ip") || request.headers.get("x-remote-ip") || request.headers.get("x-originating-ip") || request.headers.get("fastly-client-ip") || request.headers.get("akamai-origin-hop") || request.headers.get("x-remote-addr") || request.headers.get("x-remote-host") || request.headers.get("x-client-ips")
+
     if (!ip) {
         return null;
     }
@@ -207,8 +208,34 @@ export async function isBlockedUploadIp(env, uploadIp) {
 }
 
 // 构建唯一文件ID
-export async function buildUniqueFileId(env, nameType, normalizedFolder, fileName, fileExt, time) {
-    const unique_index = time + Math.floor(Math.random() * 10000);
+export async function buildUniqueFileId(context, fileName, fileType = 'application/octet-stream') {
+    const { env, url } = context;
+
+    let fileExt = fileName.split('.').pop();
+    if (!fileExt || fileExt === fileName) {
+        fileExt = fileType.split('/').pop();
+        if (fileExt === fileType || fileExt === '' || fileExt === null || fileExt === undefined) {
+            fileExt = 'unknown';
+        }
+    }
+
+    const nameType = url.searchParams.get('uploadNameType') || 'default';
+    const uploadFolder = url.searchParams.get('uploadFolder') || '';
+    const normalizedFolder = uploadFolder 
+        ? uploadFolder.replace(/^\/+/, '').replace(/\/{2,}/g, '/').replace(/\/$/, '') 
+        : '';
+    
+    if (!isExtValid(fileExt)) {
+        fileExt = fileType.split('/').pop();
+        if (fileExt === fileType || fileExt === '' || fileExt === null || fileExt === undefined) {
+            fileExt = 'unknown';
+        }
+    }
+
+    // 处理文件名，移除特殊字符
+    fileName = sanitizeFileName(fileName);
+
+    const unique_index = Date.now() + Math.floor(Math.random() * 10000);
     let baseId = '';
     
     // 根据命名方式构建基础ID
